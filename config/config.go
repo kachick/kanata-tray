@@ -258,11 +258,7 @@ func (t *cmdTempl) applyMany(xs []string) [][]string {
 func (p *hooks) intoExported() (*Hooks, error) {
 	cmdTemplate := p.CmdTemplate
 	if cmdTemplate == nil {
-		if runtime.GOOS == "windows" {
-			cmdTemplate = []string{"{}"} // TODO: better default? maybe powershell?
-		} else {
-			cmdTemplate = []string{"/bin/sh", "-c", "{}"}
-		}
+		cmdTemplate = []string{"/bin/sh", "-c", "{}"}
 	}
 	templ, err := newCmdTemplFromRaw(cmdTemplate)
 	if err != nil {

@@ -17,7 +17,6 @@
       supportedSystems = [
         "x86_64-linux"
         "aarch64-linux"
-        "aarch64-darwin"
       ];
       pkgsFor = system: nixpkgs.legacyPackages.${system};
       packageFor = system: (pkgsFor system).callPackage ./nix/package.nix { inherit self; };

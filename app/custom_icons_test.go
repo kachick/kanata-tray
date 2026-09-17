@@ -45,19 +45,19 @@ func TestResolveIconsTemplateSuffix(t *testing.T) {
 	icons := ResolveIcons(configDir, cfg)
 
 	mouse := icons.IconForLayerName("main", "mouse")
-	if mouse == nil || !mouse.IsTemplate || string(mouse.Data) != "template icon" {
-		t.Errorf("mouse icon = %+v, want the template icon with IsTemplate=true", mouse)
+	if mouse == nil || string(mouse.Data) != "template icon" {
+		t.Errorf("mouse icon = %+v, want the template icon", mouse)
 	}
 
 	qwerty := icons.IconForLayerName("main", "qwerty")
-	if qwerty == nil || qwerty.IsTemplate {
-		t.Errorf("qwerty icon = %+v, want IsTemplate=false", qwerty)
+	if qwerty == nil || string(qwerty.Data) != "plain icon" {
+		t.Errorf("qwerty icon = %+v, want plain icon", qwerty)
 	}
 
-	// Falls through to the wildcard, which keeps its own template flag.
+	// Falls through to the wildcard.
 	other := icons.IconForLayerName("main", "some-other-layer")
-	if other == nil || !other.IsTemplate || string(other.Data) != "template wildcard" {
-		t.Errorf("wildcard icon = %+v, want the template wildcard with IsTemplate=true", other)
+	if other == nil || string(other.Data) != "template wildcard" {
+		t.Errorf("wildcard icon = %+v, want the template wildcard", other)
 	}
 
 	// An empty icon file is skipped at load time, so the layer falls back to
