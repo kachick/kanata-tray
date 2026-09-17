@@ -21,16 +21,16 @@ type Icon struct {
 	IsTemplate bool
 }
 
-//go:embed default.ico
+//go:embed default.png
 var defaultIconData []byte
 
-//go:embed crash.ico
+//go:embed crash.png
 var crashIconData []byte
 
-//go:embed pause.ico
+//go:embed pause.png
 var pauseIconData []byte
 
-//go:embed live-reload.ico
+//go:embed live-reload.png
 var liveReloadIconData []byte
 
 var (
@@ -134,7 +134,7 @@ func CreateDefaultStatusIconsDirIfNotExists(configDir string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create folder: %v", err)
 		}
-		names := []string{"default.ico", "crash.ico", "pause.ico", "live-reload.ico"}
+		names := []string{"default.png", "crash.png", "pause.png", "live-reload.png"}
 		data := [][]byte{defaultIconData, crashIconData, pauseIconData, liveReloadIconData}
 		for i, name := range names {
 			path := filepath.Join(customIconsPath, name)

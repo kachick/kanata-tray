@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/getlantern/systray"
+	"github.com/gogpu/systray"
 	"github.com/kirsle/configdir"
 	"github.com/labstack/gommon/log"
 	"github.com/mattn/go-isatty"
@@ -204,17 +204,16 @@ func mainImpl() error {
 		LogFilepath:            logFilepath,
 	})
 
-	onReady := func() {
-		app.InitSystray()
-		go app.StartProcessingLoop(runner, configFolder)
-		if cfg.General.ControlServerEnable {
-			go func() {
-				err = controlserver.RunControlServer(app, cfg.General.ControlServerPort)
-				log.Errorf("app.RunControlServer failed: %v", err)
-			}()
-		}
-		app.Autorun()
+	tray := systray.New()
+	app.InitSystray(tray)
+	go app.StartProcessingLoop(runner, configFolder)
+	if cfg.General.ControlServerEnable {
+		go func() {
+			err = controlserver.RunControlServer(app, cfg.General.ControlServerPort)
+			log.Errorf("app.RunControlServer failed: %v", err)
+		}()
 	}
+	app.Autorun()
 
 	sigCh := make(chan os.Signal, 10)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -223,10 +222,14 @@ func mainImpl() error {
 		sig := <-sigCh
 		log.Infof("Received exit signal (%s)", sig)
 		app.Cleanup()
+		tray.Remove()
 		os.Exit(1)
 	}()
 
-	systray.Run(onReady, nil)
+	tray.Show()
+	if err := tray.Run(); err != nil {
+		return fmt.Errorf("tray.Run: %v", err)
+	}
 
 	return nil
 }

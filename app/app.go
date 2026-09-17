@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/getlantern/systray"
+	"github.com/gogpu/systray"
 	"github.com/k0kubun/pp/v3"
 	"github.com/labstack/gommon/log"
 	"github.com/skratchdot/open-golang/open"
@@ -39,6 +39,12 @@ type SystrayApp struct {
 	stopPresetChan   chan int // the value sent in channel is an index of preset
 	openPresetLogsCh chan int // the value sent in channel is an index of preset
 
+	tray *systray.SystemTray
+
+	optionsCh  chan struct{}
+	showLogsCh chan struct{}
+	quitCh     chan struct{}
+
 	// Menu items
 
 	mPresets        []*systray.MenuItem
@@ -67,45 +73,81 @@ func NewSystrayApp(opts Opts) *SystrayApp {
 	}
 }
 
-func (a *SystrayApp) InitSystray() *SystrayApp {
+func (a *SystrayApp) InitSystray(tray *systray.SystemTray) *SystrayApp {
 	if a == nil || a.scheduledPresetIndex != -1 {
 		panic("InitSystray must be called on a freshly created instance")
 	}
 
+	a.tray = tray
 	a.setIcon(status_icons.Default)
-	systray.SetTooltip("kanata-tray")
+	tray.SetTooltip("kanata-tray")
 
-	for _, entry := range a.presets {
-		menuItem := systray.AddMenuItem(entry.Title(statusIdle), entry.Tooltip())
-		if !entry.IsSelectable {
-			menuItem.Disable()
-		}
-		a.mPresets = append(a.mPresets, menuItem)
+	menu := systray.NewMenu()
 
-		statusItem := menuItem.AddSubMenuItem(string(statusIdle), "kanata status for this preset")
+	a.togglePresetCh = make(chan int, 10)
+	a.openPresetLogsCh = make(chan int, 10)
+	a.startPresetCh = make(chan int)
+	a.stopPresetChan = make(chan int)
+	a.optionsCh = make(chan struct{}, 1)
+	a.showLogsCh = make(chan struct{}, 1)
+	a.quitCh = make(chan struct{}, 1)
+
+	for i, entry := range a.presets {
+		i := i
+		presetSubmenu := systray.NewMenu()
+
+		statusItem := presetSubmenu.Add(string(statusIdle), func() {
+			select {
+			case a.togglePresetCh <- i:
+			default:
+			}
+		})
 		a.mPresetStatuses = append(a.mPresetStatuses, statusItem)
 		a.statuses = append(a.statuses, statusIdle)
 
 		a.presetCancelFuncs = append(a.presetCancelFuncs, nil)
 
-		openLogsItem := menuItem.AddSubMenuItem("Open kanata logs", "Open kanata log file")
+		openLogsItem := presetSubmenu.Add("Open kanata logs", func() {
+			select {
+			case a.openPresetLogsCh <- i:
+			default:
+			}
+		})
 		a.mPresetLogs = append(a.mPresetLogs, openLogsItem)
 
 		a.presetAutorestartLimiter = append(a.presetAutorestartLimiter, RestartLimiter{})
 
 		a.presetLogFiles = append(a.presetLogFiles, nil)
+
+		menuItem := menu.AddSubmenu(entry.Title(statusIdle), presetSubmenu)
+		if !entry.IsSelectable {
+			menuItem.SetDisabled(true)
+		}
+		a.mPresets = append(a.mPresets, menuItem)
 	}
 
-	systray.AddSeparator()
+	menu.AddSeparator()
 
-	a.mOptions = systray.AddMenuItem("Configure", "Reveals kanata-tray config file")
-	a.mShowLogs = systray.AddMenuItem("Open logs", "Reveals kanata-tray log file")
-	a.mQuit = systray.AddMenuItem("Exit tray", "Closes kanata (if running) and exits the tray")
+	a.mOptions = menu.Add("Configure", func() {
+		select {
+		case a.optionsCh <- struct{}{}:
+		default:
+		}
+	})
+	a.mShowLogs = menu.Add("Open logs", func() {
+		select {
+		case a.showLogsCh <- struct{}{}:
+		default:
+		}
+	})
+	a.mQuit = menu.Add("Exit tray", func() {
+		select {
+		case a.quitCh <- struct{}{}:
+		default:
+		}
+	})
 
-	a.togglePresetCh = multipleMenuItemsClickListener(a.mPresetStatuses)
-	a.startPresetCh = make(chan int)
-	a.stopPresetChan = make(chan int)
-	a.openPresetLogsCh = multipleMenuItemsClickListener(a.mPresetLogs)
+	tray.SetMenu(menu)
 
 	return a
 }
@@ -275,14 +317,16 @@ func (a *SystrayApp) StartProcessingLoop(runner *runner_pkg.Runner, configFolder
 				log.Debugf("Opening log file for preset '%s': '%s'", presetName, filename)
 				open.Start(filename)
 			}
-		case <-a.mOptions.ClickedCh:
+		case <-a.optionsCh:
 			open.Start(configFolder)
-		case <-a.mShowLogs.ClickedCh:
+		case <-a.showLogsCh:
 			open.Start(a.logFilepath)
-		case <-a.mQuit.ClickedCh:
+		case <-a.quitCh:
 			log.Info("Clicked \"Exit tray button\", exiting.")
 			a.Cleanup()
-			systray.Quit()
+			if a.tray != nil {
+				a.tray.Remove()
+			}
 			return
 		}
 	}
@@ -343,8 +387,8 @@ func (a *SystrayApp) isAnyPresetRunning() bool {
 
 func (a *SystrayApp) setStatus(presetIndex int, status KanataStatus) {
 	a.statuses[presetIndex] = status
-	a.mPresetStatuses[presetIndex].SetTitle(string(status))
-	a.mPresets[presetIndex].SetTitle(a.presets[presetIndex].Title(status))
+	a.mPresetStatuses[presetIndex].SetLabel(string(status))
+	a.mPresets[presetIndex].SetLabel(a.presets[presetIndex].Title(status))
 }
 
 // Cancels (stops) preset at given index, releasing immediately (non-blocking).
@@ -365,24 +409,11 @@ func (a *SystrayApp) setIcon(icon status_icons.Icon) {
 		return
 	}
 	a.currentIcon = icon
-	if icon.IsTemplate {
-		systray.SetTemplateIcon(icon.Data, icon.Data)
-	} else {
-		systray.SetIcon(icon.Data)
+	if a.tray != nil {
+		if icon.IsTemplate {
+			a.tray.SetTemplateIcon(icon.Data)
+		} else {
+			a.tray.SetIcon(icon.Data)
+		}
 	}
-}
-
-// Returns a channel that sends an index of item that was clicked.
-// TODO: pass ctx and cleanup on ctx cancel.
-func multipleMenuItemsClickListener(menuItems []*systray.MenuItem) chan int {
-	ch := make(chan int)
-	for i := range menuItems {
-		i := i
-		go func() {
-			for range menuItems[i].ClickedCh {
-				ch <- i
-			}
-		}()
-	}
-	return ch
 }
