@@ -12,7 +12,7 @@ buildGoModule (finalAttrs: {
 
   src = lib.cleanSource ./..;
 
-  vendorHash = "sha256-n6x2iXzC2a79i9J4lM45/O24e2Zf9c+x7n94d7jC0k0=";
+  vendorHash = "sha256-GWxpnbhAQ0jSgr9ZbvMh88/NHogwJK/InNypDZyaz2c=";
 
   env.CGO_ENABLED = 0;
 
