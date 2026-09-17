@@ -6,24 +6,6 @@ import (
 	"testing"
 )
 
-func TestIsTemplateFilename(t *testing.T) {
-	cases := map[string]bool{
-		"mouseTemplate.png":           true,
-		"mousetemplate.png":           false, // must be case-sensitive to match.
-		"/abs/path/mouseTemplate.ico": true,
-		"defaultTemplate":             true,
-		"mouse.png":                   false,
-		"template_mouse.png":          false,
-		"mouseTemplate.png.disabled":  false,
-		"live-reloadTemplate.jpg":     true,
-	}
-	for path, want := range cases {
-		if got := IsTemplateFilename(path); got != want {
-			t.Errorf("IsTemplateFilename(%q) = %v, want %v", path, got, want)
-		}
-	}
-}
-
 func TestLoadCustomStatusIcons(t *testing.T) {
 	configDir := t.TempDir()
 	iconsDir := filepath.Join(configDir, statusIconsDir)
@@ -32,10 +14,9 @@ func TestLoadCustomStatusIcons(t *testing.T) {
 	}
 
 	files := map[string]string{
-		"default.ico":         "plain default",
-		"defaultTemplate.png": "template default",
-		"pause.custom.ico":    "plain pause",
-		"crash.ico":           "",
+		"default.png":      "custom default",
+		"pause.custom.png": "custom pause",
+		"crash.png":        "",
 	}
 	for name, content := range files {
 		if err := os.WriteFile(filepath.Join(iconsDir, name), []byte(content), 0o644); err != nil {
@@ -48,31 +29,22 @@ func TestLoadCustomStatusIcons(t *testing.T) {
 		t.Fatalf("LoadCustomStatusIcons: %v", err)
 	}
 
-	// A `<status>Template.*` file wins over a plain `<status>.*` one.
-	if got := string(Default.Data); got != "template default" {
-		t.Errorf("Default.Data = %q, want the template file's content", got)
-	}
-	if !Default.IsTemplate {
-		t.Error("Default.IsTemplate = false, want true")
+	if got := string(Default.Data); got != "custom default" {
+		t.Errorf("Default.Data = %q, want custom default", got)
 	}
 
-	if got := string(Pause.Data); got != "plain pause" {
-		t.Errorf("Pause.Data = %q, want the plain file's content", got)
-	}
-	if Pause.IsTemplate {
-		t.Error("Pause.IsTemplate = true, want false")
+	if got := string(Pause.Data); got != "custom pause" {
+		t.Errorf("Pause.Data = %q, want custom pause", got)
 	}
 
-	// An empty file is ignored instead of being passed to systray, where it
-	// would panic on `&iconBytes[0]`.
+	// An empty file is ignored instead of being passed to systray.
 	if string(Crash.Data) != string(crashBefore.Data) {
 		t.Error("Crash was overwritten by an empty icon file")
 	}
 
 	// Not overridden, keeps the embedded icon.
-	if len(LiveReload.Data) == 0 || LiveReload.IsTemplate {
-		t.Errorf("LiveReload = %d bytes, template=%v; want embedded non-template icon",
-			len(LiveReload.Data), LiveReload.IsTemplate)
+	if len(LiveReload.Data) == 0 {
+		t.Errorf("LiveReload = %d bytes, want embedded icon", len(LiveReload.Data))
 	}
 }
 

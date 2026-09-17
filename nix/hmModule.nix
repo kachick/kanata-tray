@@ -59,14 +59,7 @@ in
     home.packages = [ cfg.package ];
     home.file.kanataTray = mkIf (cfg.settings != { }) {
       source = tomlFormat.generate "kanata-tray.toml" cfg.settings;
-      target =
-        (
-          if hostPlatform.isDarwin then
-            "${config.home.homeDirectory}/Library/Application Support"
-          else
-            "${config.xdg.configHome}"
-        )
-        + "/kanata-tray/kanata-tray.toml";
+      target = "${config.xdg.configHome}/kanata-tray/kanata-tray.toml";
     };
   };
 

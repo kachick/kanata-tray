@@ -6,14 +6,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"runtime"
 	"sort"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/rszyma/kanata-tray/config"
-	"github.com/rszyma/kanata-tray/os_specific"
 	"github.com/rszyma/kanata-tray/runner/tcp_client"
 )
 
@@ -169,14 +167,12 @@ func (r *Runner) ServerMessageCh() <-chan ItemAndPresetName[tcp_client.ServerMes
 
 func cmd(ctx context.Context, stdout io.Writer, stderr io.Writer, name string, args []string, extraEnv map[string]string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, name, args...)
-	if runtime.GOOS != "windows" {
-		// Ask the process to exit instead of the default SIGKILL, so that a
-		// wrapper such as sudo can relay the signal to kanata (sudo cannot
-		// relay SIGKILL). WaitDelay still escalates to SIGKILL.
-		cmd.Cancel = func() error { return cmd.Process.Signal(syscall.SIGTERM) }
-	}
+	// Ask the process to exit instead of the default SIGKILL, so that a
+	// wrapper such as sudo can relay the signal to kanata (sudo cannot
+	// relay SIGKILL). WaitDelay still escalates to SIGKILL.
+	cmd.Cancel = func() error { return cmd.Process.Signal(syscall.SIGTERM) }
 	cmd.WaitDelay = 100 * time.Millisecond
-	cmd.SysProcAttr = os_specific.ProcessAttr
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
 	cmd.Stdin = nil
 	if stdout != nil {
 		cmd.Stdout = stdout
