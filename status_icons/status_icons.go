@@ -1,9 +1,11 @@
 package status_icons
 
 import (
+	"bytes"
 	_ "embed"
 	"errors"
 	"fmt"
+	"image/png"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -82,6 +84,10 @@ func LoadCustomStatusIcons(configDir string) error {
 			log.Errorf("LoadCustomStatusIcons: status icon file is empty: %s", path)
 			continue
 		}
+		if _, err := png.DecodeConfig(bytes.NewReader(fileContent)); err != nil {
+			log.Warnf("LoadCustomStatusIcons: %s is not a valid PNG image (%v), keeping default icon", path, err)
+			continue
+		}
 
 		*target.icon = Icon{Data: fileContent}
 	}
@@ -90,10 +96,14 @@ func LoadCustomStatusIcons(configDir string) error {
 }
 
 // Finds a status icon file matching a prefix.
+// Only PNG files are matched to prevent loading legacy .ico files.
 // Only first match is returned, others are ignored.
 func findStatusIcon(entries []os.DirEntry, prefix string) (filename string, found bool) {
 	for _, entry := range entries {
 		if entry.IsDir() {
+			continue
+		}
+		if strings.ToLower(filepath.Ext(entry.Name())) != ".png" {
 			continue
 		}
 		name := filenameWithoutExt(entry.Name())
@@ -106,26 +116,22 @@ func findStatusIcon(entries []os.DirEntry, prefix string) (filename string, foun
 
 func CreateDefaultStatusIconsDirIfNotExists(configDir string) error {
 	customIconsPath := filepath.Join(configDir, statusIconsDir)
-	_, err := os.Stat(customIconsPath)
+	err := os.MkdirAll(customIconsPath, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create folder: %v", err)
+	}
 
-	if errors.Is(err, fs.ErrNotExist) {
-		log.Infof("status_icons dir doesn't exist. Creating it and populating with the default icons.")
-		err := os.MkdirAll(customIconsPath, os.ModePerm)
-		if err != nil {
-			return fmt.Errorf("failed to create folder: %v", err)
-		}
-		names := []string{"default.png", "crash.png", "pause.png", "live-reload.png"}
-		data := [][]byte{defaultIconData, crashIconData, pauseIconData, liveReloadIconData}
-		for i, name := range names {
-			path := filepath.Join(customIconsPath, name)
-			err := os.WriteFile(path, data[i], 0o644)
-			if err != nil {
+	names := []string{"default.png", "crash.png", "pause.png", "live-reload.png"}
+	data := [][]byte{defaultIconData, crashIconData, pauseIconData, liveReloadIconData}
+	for i, name := range names {
+		path := filepath.Join(customIconsPath, name)
+		if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
+			if err := os.WriteFile(path, data[i], 0o644); err != nil {
 				return fmt.Errorf("writing file %s failed", path)
 			}
+		} else if err != nil {
+			return fmt.Errorf("error checking if %s exists: %v", path, err)
 		}
-	} else if err != nil {
-		return fmt.Errorf("error checking if %s dir exists", customIconsPath)
 	}
-	// already exists, do nothing.
 	return nil
 }
