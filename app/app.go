@@ -400,9 +400,7 @@ func (a *SystrayApp) cancel(presetIndex int) {
 	a.presetCancelFuncs[presetIndex] = nil
 }
 
-// setIcon updates the tray icon. Template icons are set as macOS template
-// images (tinted from their alpha channel to match a light/dark menu bar);
-// on other platforms they are used as-is.
+// setIcon updates the tray icon.
 func (a *SystrayApp) setIcon(icon status_icons.Icon) {
 	if len(icon.Data) == 0 {
 		log.Errorf("refusing to set an empty tray icon")
@@ -410,10 +408,6 @@ func (a *SystrayApp) setIcon(icon status_icons.Icon) {
 	}
 	a.currentIcon = icon
 	if a.tray != nil {
-		if icon.IsTemplate {
-			a.tray.SetTemplateIcon(icon.Data)
-		} else {
-			a.tray.SetIcon(icon.Data)
-		}
+		a.tray.SetIcon(icon.Data)
 	}
 }

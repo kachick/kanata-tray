@@ -8,10 +8,10 @@ import (
 	"os/exec"
 	"sort"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/rszyma/kanata-tray/config"
-	"github.com/rszyma/kanata-tray/os_specific"
 	"github.com/rszyma/kanata-tray/runner/tcp_client"
 )
 
@@ -173,7 +173,7 @@ func (r *Runner) ServerMessageCh() <-chan ItemAndPresetName[tcp_client.ServerMes
 func cmd(ctx context.Context, stdout io.Writer, stderr io.Writer, name string, args []string, extraEnv map[string]string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.WaitDelay = 3 * time.Second
-	cmd.SysProcAttr = os_specific.ProcessAttr
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
 	// cmd.Stdin = os.Stdin
 	if stdout != nil {
 		cmd.Stdout = stdout

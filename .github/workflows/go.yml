@@ -7,12 +7,7 @@ on:
 
 jobs:
   test:
-    strategy:
-      matrix:
-        go-version: [1.21.x]
-        platform: [ubuntu-latest, windows-latest, macos-latest]
-
-    runs-on: ${{ matrix.platform }}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -20,16 +15,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: ${{ matrix.go-version }}
-
-      - if: matrix.platform == 'ubuntu-latest'
-        name: Install
-        run: |
-          sudo apt-get update
-          sudo apt-get install libayatana-appindicator3-dev
+          go-version: "1.25"
 
       - name: Build
-        run: go build -v ./...
+        run: CGO_ENABLED=0 go build -v ./...
 
       - name: Test
-        run: go test -v ./...
+        run: CGO_ENABLED=0 go test -v ./...

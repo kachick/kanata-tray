@@ -130,7 +130,6 @@ func readIconInFolder(filePath string, folder string) (status_icons.Icon, error)
 		return status_icons.Icon{}, fmt.Errorf("icon file is empty: %s", path)
 	}
 	return status_icons.Icon{
-		Data:       content,
-		IsTemplate: status_icons.IsTemplateFilename(path),
+		Data: content,
 	}, nil
 }

@@ -5,7 +5,7 @@ on:
       - "v*.*.*"
 
 jobs:
-  release_linux_windows:
+  release_linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -13,54 +13,15 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.21"
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install libayatana-appindicator3-dev
+          go-version: "1.25"
 
       - name: Install just
         uses: taiki-e/install-action@just
 
-      - name: Build for Linux and Windows
+      - name: Build for Linux
         run: |
           version=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           just build_release_linux $version
-          just build_release_windows $version
-
-      - name: Upload Linux and Windows artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-windows-artifacts
-          path: |
-            ./dist/kanata-tray.exe
-            ./dist/kanata-tray-linux
-
-  release_darwin:
-    needs: release_linux_windows
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.21"
-
-      - name: Install just
-        uses: taiki-e/install-action@just
-
-      - name: Download Linux and Windows artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-windows-artifacts
-          path: dist
-
-      - name: Build for darwin
-        run: |
-          version=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          just build_release_macos $version
 
       - name: Add Checksums
         run: |
@@ -73,8 +34,6 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ./dist/kanata-tray.exe
             ./dist/kanata-tray-linux
-            ./dist/kanata-tray-macos
             LICENSE
             ./dist/sha256sums

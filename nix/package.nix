@@ -2,10 +2,6 @@
   lib,
   buildGoModule,
   makeWrapper,
-  libayatana-appindicator,
-  gtk3,
-  stdenv,
-  pkg-config,
   self ? { },
   ...
 }:
@@ -16,7 +12,9 @@ buildGoModule (finalAttrs: {
 
   src = lib.cleanSource ./..;
 
-  vendorHash = "sha256-X4O+6Vmei6Y/8ARLCt2MJpQT+GZyLh333R5SjegeMqc=";
+  vendorHash = "sha256-n6x2iXzC2a79i9J4lM45/O24e2Zf9c+x7n94d7jC0k0=";
+
+  env.CGO_ENABLED = 0;
 
   flags = [ "-trimpath" ];
 
@@ -28,14 +26,8 @@ buildGoModule (finalAttrs: {
     "-X main.buildDate=unknown"
   ];
 
-  nativeBuildInputs = lib.optional stdenv.hostPlatform.isLinux pkg-config;
-
   buildInputs = [
     makeWrapper
-  ]
-  ++ lib.optionals stdenv.hostPlatform.isLinux [
-    libayatana-appindicator
-    gtk3
   ];
 
   postInstall = ''
@@ -46,10 +38,10 @@ buildGoModule (finalAttrs: {
     description = "Tray Icon for Kanata";
     longDescription = ''
       A simple wrapper for kanata to control it from tray icon.
-      Works on Windows, Linux and macOS.
+      Works on Linux.
     '';
     homepage = "https://github.com/rszyma/kanata-tray";
     license = licenses.gpl3Plus;
-    platforms = platforms.unix;
+    platforms = platforms.linux;
   };
 })

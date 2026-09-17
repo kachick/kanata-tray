@@ -12,13 +12,9 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
-// Icon is a tray icon along with the way it should be rendered.
+// Icon is a tray icon.
 type Icon struct {
 	Data []byte
-	// IsTemplate marks the icon as a macOS template image: the system ignores
-	// its colors and tints the shape from the alpha channel to match a light
-	// or dark menu bar. Ignored on other platforms.
-	IsTemplate bool
 }
 
 //go:embed default.png
@@ -43,17 +39,6 @@ var (
 //////////////////////////////////////////////
 
 var statusIconsDir string = "status_icons"
-
-// Apple's convention for template images: an icon file whose name ends with
-// "Template" (before the extension) is tinted by macOS to match the menu bar.
-const templateSuffix = "Template"
-
-// IsTemplateFilename reports whether an icon path follows the macOS template
-// image naming convention, e.g. "mouseTemplate.png".
-// https://developer.apple.com/documentation/foundation/bundle/image(forresource:)
-func IsTemplateFilename(path string) bool {
-	return strings.HasSuffix(filenameWithoutExt(path), templateSuffix)
-}
 
 func filenameWithoutExt(path string) string {
 	basename := filepath.Base(path)
@@ -81,13 +66,13 @@ func LoadCustomStatusIcons(configDir string) error {
 	}
 
 	for _, target := range targets {
-		filename, isTemplate, ok := findStatusIcon(entries, target.prefix)
+		filename, ok := findStatusIcon(entries, target.prefix)
 		if !ok {
 			continue
 		}
 		path := filepath.Join(dir, filename)
 
-		log.Infof("loading status icon: %s (template: %v)", path, isTemplate)
+		log.Infof("loading status icon: %s", path)
 		fileContent, err := os.ReadFile(path)
 		if err != nil {
 			log.Errorf("LoadCustomStatusIcons: os.ReadFile: %v", err)
@@ -98,30 +83,25 @@ func LoadCustomStatusIcons(configDir string) error {
 			continue
 		}
 
-		*target.icon = Icon{Data: fileContent, IsTemplate: isTemplate}
+		*target.icon = Icon{Data: fileContent}
 	}
 
 	return nil
 }
 
 // Finds a status icon file matching a prefix.
-// A "<prefix>Template.*" file wins over a plain "<prefix>*" one.
 // Only first match is returned, others are ignored.
-func findStatusIcon(entries []os.DirEntry, prefix string) (filename string, isTemplate bool, found bool) {
-	var plainMatch string
+func findStatusIcon(entries []os.DirEntry, prefix string) (filename string, found bool) {
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
 		}
 		name := filenameWithoutExt(entry.Name())
-		if name == prefix+templateSuffix {
-			return entry.Name(), true, true
-		}
-		if strings.HasPrefix(name, prefix) && plainMatch == "" {
-			plainMatch = entry.Name()
+		if strings.HasPrefix(name, prefix) {
+			return entry.Name(), true
 		}
 	}
-	return plainMatch, false, plainMatch != ""
+	return "", false
 }
 
 func CreateDefaultStatusIconsDirIfNotExists(configDir string) error {
