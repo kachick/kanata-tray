@@ -14,7 +14,7 @@ All available hooks:
 
 ```toml
 [defaults.hooks] # hooks in "defaults" apply to all presets, similar to other items in defaults
-cmd_template = ["/bin/sh", "-c", "{}"] # <- default on linux/macOS. On Windows the default is ["{}"].
+cmd_template = ["/bin/sh", "-c", "{}"] # default: ["/bin/sh", "-c", "{}"]
 pre-start = [
     # All hooks here are executed at the same time, careful for race condition!
     "./my-quick-script.bash",

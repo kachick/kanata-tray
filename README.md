@@ -1,11 +1,7 @@
 # kanata-tray
 
-A simple wrapper for [kanata](https://github.com/jtroo/kanata) to control it from tray icon.
-Works on Windows, Linux and macOS.
-
-### Note: there's now Windows-only native tray app support in kanata ([https://github.com/jtroo/kanata/pull/990](https://github.com/jtroo/kanata/pull/990))
-
-See [#24](https://github.com/rszyma/kanata-tray/issues/24) for comparison
+A simple wrapper for [kanata](https://github.com/jtroo/kanata) to control it from a system tray icon.
+Works on Linux (Pure Go / Zero-CGO via D-Bus StatusNotifierItem).
 
 ## Features
 
@@ -25,11 +21,7 @@ You can access it from from: `Click Tray Icon > Configure`.
 Config file name is `kanata-tray.toml`.
 Supported TOML version: 1.1.0
 
-The config folder location:
-
-- Linux `~/.config/kanata-tray`.
-- Windows `C:\Users\<YourUsername>\AppData\Roaming\kanata-tray`
-- macOS `$HOME/Library/Application\ Support/kanata-tray`
+The config folder location is `~/.config/kanata-tray` (`$XDG_CONFIG_HOME/kanata-tray`).
 
 Alternatively, you can place your config file in the same folder as kanata-tray executable,
 and it will be have higher priority than the global config in user folder.
@@ -62,8 +54,8 @@ autorestart_on_crash = true # (default: false)
 
 [defaults.layer_icons]
 mouse = 'mouse.png'
-qwerty = 'qwerty.ico'
-'*' = 'other_layers.ico'
+qwerty = 'qwerty.png'
+'*' = 'other_layers.png'
 
 [presets.'main cfg']
 kanata_config = '~/.config/kanata/test.kbd'
@@ -91,9 +83,8 @@ Disabled by default.
 
 `preset.layer_icons` - maps kanata layer names to custom icons.
 Custom icons should be placed in `icons` folder in config directory, next to `kanata-tray.toml`.
-Accepted icon types on Linux are `.ico`, `.png`, `.jpg`; on Windows only `.ico` is supported.
+Accepted icon types are `.png`, `.jpg`, etc. (PNG format is recommended).
 You can assign an icon to special identifier `'*'` to change icon for other layers not specified in `[layer_icons]`.
-See [template icons on macOS](#template-icons-on-macos) for icons that follow tinted-style appearance.
 
 `preset.autorestart_on_crash` - when set to true, preset will automatically restart whenever kanata crashes.
 In case of too rapid restarts (above 2 autorestarts / minute) this feature will be automatically disabled.
@@ -108,8 +99,7 @@ Disabled by default.
 Other notes:
 
 - You can use `~` in `kanata_config`, `kanata_executable` and `extra_args` to substitute to your "home" directory.
-- Paths starting with `.\` (on Windows) or `./` (on Linux and macOS) will reference files located in kanata-tray config directory.
-- On Windows: make sure to surround paths with single-quotes `'` instead of double-quotes, otherwise paths will not work (because `\` would be treated as escape character).
+- Paths starting with `./` will reference files located in kanata-tray config directory.
 
 ### Overriding status icons
 
@@ -125,10 +115,6 @@ with other one of your choice.
   "default", "crash", "pause", "live-reload".
 - If there are multiple files matching the prefix, only one of them will be loaded,
   and other ignored.
-
-### Template icons on macOS
-
-On macOS, tinted-style icons are supported if the filename ends in `Template`. [Template icons documentation](./doc/tinted_icons.md).
 
 ### Hooks
 
@@ -155,45 +141,35 @@ Log file - By default kanata-tray will try to write a log file named `kanata_tra
 
 Debug logs - more verbose kanata-tray output, debug logging can be enabled with `--log-level=1` flag. You can use it to see loaded config struct or raw tcp messages from kanata.
 
-## Linux Dependencies
+## Requirements
 
-For Linux, make sure to install required packages first:
+kanata-tray is implemented in pure Go (zero CGO) and communicates with the desktop using the standard **StatusNotifierItem (SNI)** D-Bus protocol (`org.kde.StatusNotifierItem`).
 
-### Arch:
+No C libraries (`libayatana-appindicator`, `gtk3`) or C compilers (`gcc`) are required to build or run.
 
-```bash
-pacman -S libayatana-appindicator
-```
+### Runtime Requirements
 
-also if you want to build from source:
+Make sure your Linux desktop environment or panel supports the StatusNotifierItem (SNI) protocol:
 
-```bash
-pacman -S base-devel gtk3 go just
-```
-
-### Ubuntu:
-
-```bash
-sudo apt-get install libayatana-appindicator3-dev
-```
-
-also if you want to build from source:
-
-```bash
-sudo apt-get install gcc libgtk-3-dev golang just
-```
-
-### OpenSUSE Tumbleweed:
-
-```bash
-sudo zypper in libayatana-appindicator3-devel
-```
+- **GNOME**: Requires the [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/) extension.
+- **KDE Plasma**: Supported natively out of the box.
+- **Waybar / Sway / i3 / Polybar**: Supported via standard tray/SNI modules.
 
 ## Installation
 
-Prebuild binaries for Windows and Linux: [releases page](https://github.com/rszyma/kanata-tray/releases/latest)
+Prebuilt binary for Linux is available on the [releases page](https://github.com/rszyma/kanata-tray/releases/latest).
 
-To build from source see recipes in [justfile](./justfile).
+To build from source:
+
+```bash
+CGO_ENABLED=0 go build -trimpath -o dist/kanata-tray-linux .
+```
+
+or using [just](https://github.com/casey/just):
+
+```bash
+just build_release_linux
+```
 
 ## Contributing
 
