@@ -1,8 +1,10 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"image/png"
 	"os"
 	"slices"
 	"time"
@@ -404,6 +406,10 @@ func (a *SystrayApp) cancel(presetIndex int) {
 func (a *SystrayApp) setIcon(icon status_icons.Icon) {
 	if len(icon.Data) == 0 {
 		log.Errorf("refusing to set an empty tray icon")
+		return
+	}
+	if _, err := png.DecodeConfig(bytes.NewReader(icon.Data)); err != nil {
+		log.Errorf("refusing to set invalid PNG tray icon: %v", err)
 		return
 	}
 	a.currentIcon = icon
