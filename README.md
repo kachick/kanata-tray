@@ -1,7 +1,17 @@
 # kanata-tray
 
 A simple wrapper for [kanata](https://github.com/jtroo/kanata) to control it from a system tray icon.
-Works on Linux (Pure Go / Zero-CGO via D-Bus StatusNotifierItem).
+
+## About this fork
+
+This repository is a personal fork maintained for [kachick/dotfiles](https://github.com/kachick/dotfiles) on Linux. It is not intended to replace upstream ([rszyma/kanata-tray](https://github.com/rszyma/kanata-tray)) or be merged back.
+
+Upstream provides great multi-platform support across Windows, macOS, and Linux. For Linux, upstream relies on CGO and `libayatana-appindicator3`.
+
+This fork tailors the code for personal Linux desktop use with Nix:
+- **Zero-CGO**: Uses pure Go ([gogpu/systray](https://github.com/gogpu/systray)) to communicate directly with D-Bus StatusNotifierItem (SNI).
+- **Fast and clean Nix builds**: Builds without C compilers or system C libraries.
+- **Linux only**: Removes Windows and macOS specific code to keep maintenance simple.
 
 ## Features
 
